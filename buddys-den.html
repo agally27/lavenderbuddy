@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Buddy's Den — the Lavenderbuddy companion</title>
+<meta name="description" content="Buddy's Den is the free digital companion to the Lavenderbuddy bear: guided breathing, a feelings check-in, affirmation cards and a sleep wind-down.">
+<meta name="theme-color" content="#251c3a">
+<style>
+  /* ————— Buddy's Den: a single committed "dusk den" world ————— */
+  :root{
+    --night-1:#251c3a; --night-2:#332750; --night-3:#413263;
+    --card:#3a2e57; --card-2:#453768;
+    --ink:#f3eefc; --ink-soft:#cfc3e8; --ink-dim:#a393c9;
+    --lav:#a68fdb; --lav-soft:#c9bee4; --bloom:#e2d9f5;
+    --honey:#eec173; --coral:#ef9d9d; --sky:#8fb6e8; --sage:#9ec99a; --lilac:#c2a6f0;
+    --radius:26px;
+    --font:"Arial Rounded MT Bold","Hiragino Maru Gothic ProN","Trebuchet MS","Segoe UI",system-ui,sans-serif;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font);
+    color:var(--ink);
+    background:linear-gradient(180deg,var(--night-1) 0%,var(--night-2) 55%,var(--night-3) 100%) fixed;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:none}
+  button:focus-visible,a:focus-visible{outline:3px solid var(--honey);outline-offset:3px;border-radius:12px}
+
+  /* stars */
+  #stars{position:fixed;inset:0;pointer-events:none;z-index:0}
+  .star{position:absolute;border-radius:50%;background:var(--bloom);opacity:.5;animation:twinkle 4s ease-in-out infinite}
+  @keyframes twinkle{0%,100%{opacity:.18}50%{opacity:.65}}
+
+  #app{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:20px 18px 118px;min-height:100vh;display:flex;flex-direction:column}
+
+  header.den-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .den-title{font-size:1.05rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+  .paw-chip{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.08);border-radius:999px;padding:7px 14px;font-size:.95rem;color:var(--honey)}
+  .paw-chip svg{width:18px;height:18px}
+
+  .screen{display:none;flex-direction:column;flex:1;animation:fadein .45s ease}
+  .screen.active{display:flex}
+  @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  h1{font-size:1.75rem;margin:.2em 0 .1em;text-wrap:balance;font-weight:700}
+  .sub{color:var(--ink-soft);margin:0 0 14px;font-size:1.02rem;line-height:1.5}
+
+  /* ————— Bear stage ————— */
+  .stage{position:relative;display:flex;justify-content:center;padding:8px 0 0}
+  .bear-wrap{position:relative;width:min(300px,72vw)}
+  .bear-wrap svg{width:100%;height:auto;display:block}
+  .bear-body{transform-origin:50% 92%;}
+  .breathing-idle .bear-body{animation:idlebreathe 5.2s ease-in-out infinite}
+  @keyframes idlebreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+  .blink{animation:blink 6s infinite}
+  @keyframes blink{0%,94.5%,98.5%,100%{transform:scaleY(1)}96.5%{transform:scaleY(.08)}}
+  .eye-g{transform-origin:center 105px}
+  .bear-bounce .bear-body{animation:bounce .55s ease}
+  @keyframes bounce{0%{transform:scale(1)}35%{transform:scale(1.06,.94)}65%{transform:scale(.97,1.04)}100%{transform:scale(1)}}
+
+  .speech{
+    min-height:56px;margin:14px auto 0;max-width:420px;text-align:center;
+    background:rgba(255,255,255,.09);border-radius:20px;padding:13px 18px;
+    font-size:1.05rem;line-height:1.45;color:var(--bloom);
+  }
+  .speech em{color:var(--honey);font-style:normal}
+
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+  .btn{
+    background:var(--lav);color:#241c3a;font-weight:700;font-size:1.02rem;
+    padding:14px 22px;border-radius:999px;transition:transform .15s ease,background .15s ease;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn:hover{transform:translateY(-2px);background:var(--lilac)}
+  .btn.ghost{background:rgba(255,255,255,.1);color:var(--ink)}
+  .btn.honey{background:var(--honey)}
+  .btn:active{transform:scale(.97)}
+
+  /* ————— Breathe screen ————— */
+  .breath-panel{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .rounds-pick{display:flex;gap:8px;margin:4px 0 2px}
+  .rounds-pick button{
+    width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.09);
+    font-size:1.15rem;font-weight:700;color:var(--ink-soft);transition:all .15s
+  }
+  .rounds-pick button[aria-pressed="true"]{background:var(--honey);color:#241c3a;transform:scale(1.08)}
+  .breath-cue{
+    font-size:1.5rem;min-height:2.2em;text-align:center;color:var(--bloom);
+    display:flex;align-items:center;justify-content:center;text-wrap:balance
+  }
+  .breath-sub{color:var(--ink-dim);font-size:.95rem;min-height:1.4em;text-align:center}
+  .bc{transition:opacity .4s ease, r .4s ease}
+  .bc-glow{filter:drop-shadow(0 0 7px currentColor)}
+  .inhale-anim #buddy{transition:transform 1.6s ease-in-out}
+  .halo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .halo::after{
+    content:"";width:78%;padding-top:78%;border-radius:50%;
+    background:radial-gradient(circle,rgba(166,143,219,.28),transparent 70%);
+    transform:scale(var(--halo,1));transition:transform 1.6s ease-in-out;
+  }
+
+  /* ————— Feelings screen ————— */
+  .weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px;margin-top:10px}
+  .weather-btn{
+    background:var(--card);border-radius:var(--radius);padding:16px 8px 12px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.92rem;color:var(--ink-soft);
+    transition:transform .15s,background .15s;border:2px solid transparent
+  }
+  .weather-btn:hover{transform:translateY(-3px);background:var(--card-2)}
+  .weather-btn[aria-pressed="true"]{border-color:var(--honey);background:var(--card-2)}
+  .weather-btn svg{width:46px;height:46px}
+  .week-strip{margin-top:18px;background:rgba(0,0,0,.18);border-radius:18px;padding:12px 16px}
+  .week-strip h3{margin:0 0 8px;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+  .week-days{display:flex;gap:8px;justify-content:space-between}
+  .week-day{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.72rem;color:var(--ink-dim)}
+  .week-day svg{width:26px;height:26px}
+  .week-day .none{width:26px;height:26px;border-radius:50%;border:2px dashed rgba(255,255,255,.18)}
+
+  /* ————— Cards screen ————— */
+  .card-stage{display:flex;justify-content:center;margin:16px 0 6px;perspective:1200px}
+  .aff-card{
+    width:min(320px,84vw);aspect-ratio:5/6;position:relative;transform-style:preserve-3d;
+    transition:transform .7s cubic-bezier(.4,.1,.2,1.2);cursor:pointer;border-radius:24px;
+  }
+  .aff-card.flipped{transform:rotateY(180deg)}
+  .aff-face{
+    position:absolute;inset:0;backface-visibility:hidden;border-radius:24px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    padding:26px;text-align:center;
+  }
+  .aff-front{
+    background:linear-gradient(160deg,var(--card-2),var(--card));
+    border:2px dashed rgba(226,217,245,.35);color:var(--ink-soft);font-size:1.1rem;
+  }
+  .aff-front svg{width:84px;height:84px;opacity:.9}
+  .aff-back{
+    background:linear-gradient(160deg,var(--lilac),var(--lav));color:#241c3a;
+    transform:rotateY(180deg);font-size:1.5rem;font-weight:700;line-height:1.35;text-wrap:balance;
+  }
+  .aff-back small{font-size:.85rem;font-weight:400;opacity:.75}
+
+  /* ————— Sleep screen ————— */
+  .sleep-scene{position:relative;border-radius:var(--radius);overflow:hidden;background:linear-gradient(180deg,#191330,#241c3a 70%);padding:26px 18px 20px;text-align:center;margin-top:8px}
+  .moon{position:absolute;top:20px;right:26px;width:54px;height:54px;border-radius:50%;background:var(--honey);box-shadow:0 0 32px rgba(238,193,115,.5)}
+  .moon::after{content:"";position:absolute;top:4px;left:-8px;width:48px;height:48px;border-radius:50%;background:#191330}
+  .zzz{position:absolute;top:26px;left:50%;font-size:1.3rem;color:var(--bloom);opacity:0}
+  .asleep .zzz{animation:zfloat 3.5s ease-in-out infinite}
+  .zzz:nth-child(2){animation-delay:1.15s!important;font-size:1rem}
+  .zzz:nth-child(3){animation-delay:2.3s!important;font-size:.8rem}
+  @keyframes zfloat{0%{opacity:0;transform:translate(0,0)}25%{opacity:.9}100%{opacity:0;transform:translate(26px,-46px)}}
+  .sleep-scene .bear-wrap{width:min(230px,60vw);margin:0 auto}
+  .sound-note{color:var(--ink-dim);font-size:.85rem;margin-top:10px}
+
+  /* ————— Nav ————— */
+  nav.tabbar{
+    position:fixed;bottom:0;left:0;right:0;z-index:5;
+    display:flex;justify-content:center;gap:4px;padding:10px 12px calc(12px + env(safe-area-inset-bottom));
+    background:rgba(30,22,50,.9);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.08)
+  }
+  .tab{
+    flex:1;max-width:104px;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:8px 4px;border-radius:16px;font-size:.72rem;color:var(--ink-dim);transition:all .15s
+  }
+  .tab svg{width:26px;height:26px}
+  .tab[aria-current="page"]{color:var(--honey);background:rgba(238,193,115,.12)}
+
+  /* ————— Modal (parent corner / Gus / naming) ————— */
+  dialog{
+    border:none;border-radius:24px;max-width:480px;width:calc(100vw - 40px);
+    background:var(--card);color:var(--ink);padding:26px 24px;
+    max-height:82vh;
+  }
+  dialog::backdrop{background:rgba(15,10,28,.7)}
+  dialog h2{margin:0 0 4px;font-size:1.3rem}
+  dialog h3{font-size:1rem;color:var(--honey);margin:18px 0 4px}
+  dialog p,dialog li{color:var(--ink-soft);line-height:1.55;font-size:.96rem}
+  dialog ol{padding-left:20px;margin:6px 0}
+  .close-x{position:absolute;top:14px;right:14px;font-size:1.2rem;color:var(--ink-dim);padding:6px 10px}
+  dialog input[type=text]{
+    width:100%;font-family:inherit;font-size:1.15rem;padding:13px 16px;border-radius:16px;
+    border:2px solid var(--lav);background:rgba(0,0,0,.2);color:var(--ink);margin:10px 0 16px
+  }
+  .parent-link{margin:22px auto 0;display:block;text-align:center;color:var(--ink-dim);font-size:.85rem;text-decoration:underline;background:none}
+
+  /* petals celebration */
+  .petal{position:fixed;top:-24px;width:14px;height:14px;border-radius:50% 0 50% 50%;z-index:9;pointer-events:none;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.15s!important}
+    .breathing-idle .bear-body{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="stars" aria-hidden="true"></div>
+<div id="app">
+  <header class="den-head">
+    <span class="den-title">Buddy's Den</span>
+    <span class="paw-chip" title="Paw prints earned by breathing with Buddy">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="7" cy="7.5" rx="2.1" ry="2.8"/><ellipse cx="12" cy="5.8" rx="2.1" ry="2.8"/><ellipse cx="17" cy="7.5" rx="2.1" ry="2.8"/><path d="M12 10c-3.6 0-6.5 2.8-6.5 5.7 0 1.9 1.5 3.3 3.3 3.3 1.2 0 2.2-.6 3.2-.6s2 .6 3.2.6c1.8 0 3.3-1.4 3.3-3.3C18.5 12.8 15.6 10 12 10z"/></svg>
+      <span id="pawCount">0</span>
+    </span>
+  </header>
+
+  <!-- ===================== DEN (home) ===================== -->
+  <section class="screen active breathing-idle" id="screen-den">
+    <h1 id="denGreeting">Hello!</h1>
+    <p class="sub">Tap <span id="denName">Buddy</span> to say hi — or pick something to do together.</p>
+    <div class="stage">
+      <div class="bear-wrap" id="denBearWrap">
+        <div class="halo" aria-hidden="true"></div>
+        <button id="bearBtn" aria-label="Say hi to your bear" style="display:block;width:100%">
+          <!-- BEAR_SVG_DEN -->
+        </button>
+      </div>
+    </div>
+    <div class="speech" id="denSpeech" aria-live="polite">Hi! I'm so happy you're here.</div>
+    <div class="btn-row">
+      <button class="btn" data-go="breathe">🌬️ Breathe with me</button>
+      <button class="btn ghost" data-go="feel">How do you feel?</button>
+    </div>
+    <button class="parent-link" id="renameBtn">Change your bear's name</button>
+  </section>
+
+  <!-- ===================== BREATHE ===================== -->
+  <section class="screen" id="screen-breathe">
+    <h1>Breathe with <span class="bname">Buddy</span></h1>
+    <p class="sub">Follow the glowing circles on <span class="bname">Buddy</span>'s tummy — just like the stitched ones on your real bear.</p>
+    <div class="breath-panel">
+      <div class="rounds-pick" role="group" aria-label="How many breaths">
+        <button data-rounds="3" aria-pressed="true">3</button>
+        <button data-rounds="4" aria-pressed="false">4</button>
+        <button data-rounds="5" aria-pressed="false">5</button>
+      </div>
+      <div class="stage">
+        <div class="bear-wrap inhale-anim" id="breatheBearWrap">
+          <div class="halo" id="breathHalo" aria-hidden="true"></div>
+          <!-- BEAR_SVG_BREATHE -->
+        </div>
+      </div>
+      <div class="breath-cue" id="breathCue" aria-live="assertive">Ready when you are.</div>
+      <div class="breath-sub" id="breathSub">Two little sniffs in… one long, slow blow out.</div>
+      <div class="btn-row">
+        <button class="btn honey" id="startBreath">Start breathing</button>
+        <button class="btn ghost" id="stopBreath" hidden>Stop</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FEELINGS ===================== -->
+  <section class="screen" id="screen-feel">
+    <h1>What's your weather today?</h1>
+    <p class="sub">Feelings are like weather — they visit, and they pass. Which one is visiting you?</p>
+    <div class="weather-grid" role="group" aria-label="Pick your feeling">
+      <button class="weather-btn" data-mood="sunny" aria-pressed="false">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="10" fill="#eec173"/><g stroke="#eec173" stroke-width="3" stroke-linecap="round"><line x1="24" y1="4" x2="24" y2="10"/><line x1="24" y1="38" x2="24" y2="44"/><line x1="4" y1="24" x2="10" y2="24"/><line x1="38" y1="24" x2="44" y2="24"/><line x1="10" y1="10" x2="14" y2="14"/><line x1="34" y1="34" x2="38" y2="38"/><line x1="38" y1="10" x2="34" y2="14"/><line x1="14" y1="34" x2="10" y2="38"/></g></svg>
+        Sunny
+      </button>
+      <button class="weather-btn" data-mood="breezy" aria-pressed="false">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="18" cy="18" r="8" fill="#eec173"/><path d="M14 30h22a5 5 0 1 1-4 8" fill="none" stroke="#8fb6e8" stroke-width="3.4" stroke-linecap="round"/><path d="M8 22h18a5 5 0 1 0-4-8" fill="none" stroke="#8fb6e8" stroke-width="3.4" stroke-linecap="round" opacity=".7"/></svg>
+        Breezy
+      </button>
+      <button class="weather-btn" data-mood="cloudy" aria-pressed="false">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 34a8 8 0 1 1 2-15.7A10 10 0 0 1 35 20a7 7 0 0 1 1 14z" fill="#cfc3e8"/></svg>
+        Cloudy
+      </button>
+      <button class="weather-btn" data-mood="rainy" aria-pressed="false">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 28a8 8 0 1 1 2-15.7A10 10 0 0 1 35 14a7 7 0 0 1 1 14z" fill="#cfc3e8"/><g stroke="#8fb6e8" stroke-width="3" stroke-linecap="round"><line x1="16" y1="34" x2="14" y2="41"/><line x1="25" y1="34" x2="23" y2="41"/><line x1="34" y1="34" x2="32" y2="41"/></g></svg>
+        Rainy
+      </button>
+      <button class="weather-btn" data-mood="stormy" aria-pressed="false">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 26a8 8 0 1 1 2-15.7A10 10 0 0 1 35 12a7 7 0 0 1 1 14z" fill="#a393c9"/><path d="M26 26l-7 10h6l-3 10 10-13h-6l4-7z" fill="#eec173"/></svg>
+        Stormy
+      </button>
+    </div>
+    <div class="speech" id="feelSpeech" aria-live="polite" style="margin-top:18px">Tap the weather that feels like you.</div>
+    <div class="btn-row" id="feelActions" hidden>
+      <button class="btn" data-go="breathe">🌬️ Breathe it through</button>
+      <button class="btn ghost" data-go="cards">Draw a card</button>
+    </div>
+    <div class="week-strip">
+      <h3>Your week of weather</h3>
+      <div class="week-days" id="weekDays"></div>
+    </div>
+  </section>
+
+  <!-- ===================== CARDS ===================== -->
+  <section class="screen" id="screen-cards">
+    <h1>Affirmation cards</h1>
+    <p class="sub"><span class="bname">Buddy</span> keeps little true things in his tummy pocket. Tap the card to see today's.</p>
+    <div class="card-stage">
+      <div class="aff-card" id="affCard" role="button" tabindex="0" aria-label="Flip the affirmation card">
+        <div class="aff-face aff-front">
+          <svg viewBox="0 0 320 360" aria-hidden="true"><circle cx="160" cy="120" r="60" fill="#c9bee4"/><circle cx="115" cy="72" r="24" fill="#c9bee4"/><circle cx="205" cy="72" r="24" fill="#c9bee4"/><circle cx="115" cy="72" r="12" fill="#e2d9f5"/><circle cx="205" cy="72" r="12" fill="#e2d9f5"/><circle cx="140" cy="112" r="6" fill="#3a2e57"/><circle cx="180" cy="112" r="6" fill="#3a2e57"/><ellipse cx="160" cy="138" rx="22" ry="16" fill="#e2d9f5"/><ellipse cx="160" cy="131" rx="7" ry="5" fill="#3a2e57"/></svg>
+          <span>Tap to flip me over!</span>
+        </div>
+        <div class="aff-face aff-back">
+          <span id="affText">I am safe.</span>
+          <small>— from <span class="bname">Buddy</span>, your best friend</small>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn ghost" id="newCard">Another card</button>
+    </div>
+  </section>
+
+  <!-- ===================== SLEEP ===================== -->
+  <section class="screen" id="screen-sleep">
+    <h1>Goodnight time</h1>
+    <p class="sub">When the body feels safe, sleep arrives gently. Tuck <span class="bname">Buddy</span> in and rest together.</p>
+    <div class="sleep-scene" id="sleepScene">
+      <div class="moon" aria-hidden="true"></div>
+      <span class="zzz" aria-hidden="true">z</span><span class="zzz" aria-hidden="true">z</span><span class="zzz" aria-hidden="true">z</span>
+      <div class="bear-wrap" id="sleepBearWrap">
+        <!-- BEAR_SVG_SLEEP -->
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="tuckBtn">🌙 Tuck in</button>
+        <button class="btn ghost" id="soundBtn" aria-pressed="false">🔈 Gentle rain: off</button>
+      </div>
+      <p class="sound-note">Rain sound is made right here on your device — nothing plays until you turn it on.</p>
+    </div>
+    <button class="parent-link" id="parentBtn">For grown-ups: the science &amp; how to introduce the bear</button>
+  </section>
+</div>
+
+<nav class="tabbar" aria-label="Buddy's Den">
+  <button class="tab" data-go="den" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+    Den
+  </button>
+  <button class="tab" data-go="breathe" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7a2.5 2.5 0 1 1-2.5 2.5"/></svg>
+    Breathe
+  </button>
+  <button class="tab" data-go="feel" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r=".6" fill="currentColor"/><circle cx="15" cy="10" r=".6" fill="currentColor"/><path d="M8.5 15c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"/></svg>
+    Feelings
+  </button>
+  <button class="tab" data-go="cards" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="17" rx="2"/><path d="M12 9c-1.8-2.4-5 0-1.6 2.8L12 13l1.6-1.2C17 9 13.8 6.6 12 9z" fill="currentColor" stroke="none"/></svg>
+    Cards
+  </button>
+  <button class="tab" data-go="sleep" aria-current="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20 14z"/></svg>
+    Sleep
+  </button>
+</nav>
+
+<!-- naming dialog -->
+<dialog id="nameDialog">
+  <h2>What's your bear's name?</h2>
+  <p>Every Lavenderbuddy gets a name from their best friend. What will you call yours?</p>
+  <form method="dialog">
+    <input type="text" id="nameInput" maxlength="20" placeholder="Buddy" aria-label="Your bear's name" autocomplete="off">
+    <div class="btn-row" style="justify-content:flex-end">
+      <button class="btn honey" value="ok">That's the one!</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- parent corner -->
+<dialog id="parentDialog">
+  <button class="close-x" aria-label="Close">✕</button>
+  <h2>For grown-ups</h2>
+  <p>This den is a digital companion to your child's real Lavenderbuddy® — it practises the same skills, so the bear and the app reinforce each other.</p>
+  <h3>Why the funny two-sniff breath?</h3>
+  <p>The breathing game is a <strong>physiological sigh</strong>: two inhales through the nose, then one long exhale. It reinflates collapsed air sacs in the lungs, offloads excess CO₂, and activates the vagus nerve — the body's built-in calm switch — shifting the nervous system into "rest and digest". Fingers tracing the stitched circles keep the exercise in the body, not the head.</p>
+  <h3>Meet Gus 👋</h3>
+  <p>We call the vagus nerve <strong>Gus</strong>. He's the longest nerve in the body — he sets off from behind the ear and visits every organ on his way down. When your child does slow exhales, Gus tells the heart: "all safe here, you can slow down now."</p>
+  <h3>Introducing the real bear</h3>
+  <ol>
+    <li><strong>Let them lead with play.</strong> New textures, colours and the lavender scent — no agenda for a week or two.</li>
+    <li><strong>Explore together.</strong> Stroke the fabric, find the stitched breath circles with eyes closed, open the tummy pocket.</li>
+    <li><strong>Mirror joy.</strong> Hug the bear yourself, breathe, and say out loud how good it feels.</li>
+    <li><strong>Be there in big feelings.</strong> Place the bear near them and say nothing. Let them come to it.</li>
+    <li><strong>Introduce the breath.</strong> Two sniffs in, one long blow out, tracing circles with fingers.</li>
+    <li><strong>Repeat daily through play.</strong> Consistency is what builds new pathways that say "safe".</li>
+  </ol>
+  <p>Progress in this app (paw prints, weather check-ins) stays on this device only. Nothing is uploaded anywhere.</p>
+</dialog>
+
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- the bear, built from primitives ---------- */
+  function bearSVG(id, asleep){
+    const eyes = asleep
+      ? '<g stroke="#241c3a" stroke-width="4" stroke-linecap="round" fill="none"><path d="M120 106 q8 7 16 0"/><path d="M184 106 q8 7 16 0"/></g>'
+      : '<g class="eye-g blink"><circle cx="128" cy="105" r="7" fill="#241c3a"/><circle cx="192" cy="105" r="7" fill="#241c3a"/><circle cx="130.5" cy="102.5" r="2.4" fill="#fff"/><circle cx="194.5" cy="102.5" r="2.4" fill="#fff"/></g>';
+    const dotColors = ["#eec173","#ef9d9d","#8fb6e8","#9ec99a","#e2d9f5"];
+    const dots = dotColors.map((c,i)=>`<circle class="bc" data-i="${i}" cx="160" cy="${228+i*24}" r="8" fill="${c}" opacity=".85"/>`).join("");
+    return `<svg viewBox="0 0 320 372" role="img" aria-label="${asleep?"Your bear, fast asleep":"Your bear"}">
+      <g id="${id}" class="bear-body">
+        <circle cx="100" cy="70" r="34" fill="#8e7cc3"/><circle cx="220" cy="70" r="34" fill="#8e7cc3"/>
+        <circle cx="100" cy="70" r="18" fill="#c9bee4"/><circle cx="220" cy="70" r="18" fill="#c9bee4"/>
+        <ellipse cx="78" cy="255" rx="26" ry="52" fill="#8e7cc3" transform="rotate(18 78 255)"/>
+        <ellipse cx="242" cy="255" rx="26" ry="52" fill="#8e7cc3" transform="rotate(-18 242 255)"/>
+        <ellipse cx="160" cy="268" rx="84" ry="92" fill="#8e7cc3"/>
+        <ellipse cx="120" cy="344" rx="30" ry="22" fill="#a68fdb"/>
+        <ellipse cx="200" cy="344" rx="30" ry="22" fill="#a68fdb"/>
+        <ellipse cx="120" cy="346" rx="14" ry="10" fill="#c9bee4"/>
+        <ellipse cx="200" cy="346" rx="14" ry="10" fill="#c9bee4"/>
+        <ellipse cx="160" cy="272" rx="52" ry="64" fill="#c9bee4"/>
+        <ellipse cx="160" cy="272" rx="52" ry="64" fill="none" stroke="#8e7cc3" stroke-width="2" stroke-dasharray="6 7" opacity=".6"/>
+        <circle cx="160" cy="120" r="78" fill="#8e7cc3"/>
+        <ellipse cx="132" cy="128" rx="10" ry="7" fill="#ef9d9d" opacity=".45"/>
+        <ellipse cx="188" cy="128" rx="10" ry="7" fill="#ef9d9d" opacity=".45"/>
+        ${eyes}
+        <ellipse cx="160" cy="150" rx="33" ry="25" fill="#c9bee4"/>
+        <ellipse cx="160" cy="141" rx="10" ry="7" fill="#241c3a"/>
+        <path d="M160 148 v8 M160 156 q-7 8 -15 3 M160 156 q7 8 15 3" fill="none" stroke="#241c3a" stroke-width="3" stroke-linecap="round"/>
+        ${dots}
+      </g>
+    </svg>`;
+  }
+  $("#bearBtn").innerHTML = bearSVG("buddy");
+  $("#breatheBearWrap").insertAdjacentHTML("beforeend", bearSVG("buddyBreathe"));
+  $("#sleepBearWrap").innerHTML = bearSVG("buddySleep", true);
+
+  /* ---------- stars ---------- */
+  const starBox = $("#stars");
+  for(let i=0;i<38;i++){
+    const s=document.createElement("span");
+    s.className="star";
+    const sz = 1+((i*7)%3);
+    s.style.cssText=`left:${(i*61)%100}%;top:${(i*37)%100}%;width:${sz}px;height:${sz}px;animation-delay:${(i*.53)%4}s`;
+    starBox.appendChild(s);
+  }
+
+  /* ---------- state ---------- */
+  const store = {
+    get(k,d){ try{const v=localStorage.getItem("bd_"+k);return v===null?d:JSON.parse(v)}catch(e){return d} },
+    set(k,v){ try{localStorage.setItem("bd_"+k,JSON.stringify(v))}catch(e){} }
+  };
+  let bearName = store.get("name", null);
+  let paws = store.get("paws", 0);
+  $("#pawCount").textContent = paws;
+
+  function applyName(){
+    const n = bearName || "Buddy";
+    $$(".bname").forEach(el=>el.textContent=n);
+    $("#denName").textContent = n;
+  }
+  applyName();
+
+  /* ---------- greeting ---------- */
+  const h = new Date().getHours();
+  $("#denGreeting").textContent = h<12 ? "Good morning!" : h<17 ? "Good afternoon!" : "Good evening!";
+
+  /* ---------- navigation ---------- */
+  const screens = {den:"#screen-den", breathe:"#screen-breathe", feel:"#screen-feel", cards:"#screen-cards", sleep:"#screen-sleep"};
+  function go(name){
+    Object.values(screens).forEach(sel=>$(sel).classList.remove("active"));
+    $(screens[name]).classList.add("active");
+    $$(".tab").forEach(t=>t.setAttribute("aria-current", t.dataset.go===name ? "page":"false"));
+    stopBreathing();
+    window.scrollTo({top:0});
+  }
+  document.addEventListener("click", e=>{
+    const g = e.target.closest("[data-go]");
+    if(g && screens[g.dataset.go]) go(g.dataset.go);
+  });
+
+  /* ---------- den: tap the bear ---------- */
+  const denLines = [
+    "That tickles! Hee hee.",
+    "I heard you're <em>very</em> smart and try your best every day.",
+    "Big hugs at bedtime are my favourite.",
+    "Want to smell the lavender? <em>Sniff sniff…</em> ahh.",
+    "We can do anything together, like best friends do.",
+    "My tummy circles are for tracing with your fingers.",
+    "You make my little bear heart happy."
+  ];
+  let lineIx = 0;
+  $("#bearBtn").addEventListener("click", ()=>{
+    const den = $("#screen-den");
+    den.classList.remove("bear-bounce"); void den.offsetWidth; den.classList.add("bear-bounce");
+    $("#denSpeech").innerHTML = denLines[lineIx++ % denLines.length];
+  });
+
+  /* ---------- naming ---------- */
+  const nameDialog = $("#nameDialog");
+  function askName(){
+    $("#nameInput").value = bearName && bearName!=="Buddy" ? bearName : "";
+    nameDialog.showModal();
+  }
+  nameDialog.addEventListener("close", ()=>{
+    const v = $("#nameInput").value.trim();
+    bearName = v || bearName || "Buddy";
+    store.set("name", bearName);
+    applyName();
+    $("#denSpeech").innerHTML = `<em>${bearName}</em>… I love it! That's me!`;
+  });
+  $("#renameBtn").addEventListener("click", askName);
+  if(!bearName) setTimeout(askName, 900);
+
+  /* ---------- breathing: the physiological sigh ---------- */
+  let rounds = 3, breathing = false, breathTimers = [];
+  $$(".rounds-pick button").forEach(b=>b.addEventListener("click", ()=>{
+    rounds = +b.dataset.rounds;
+    $$(".rounds-pick button").forEach(x=>x.setAttribute("aria-pressed", x===b ? "true":"false"));
+  }));
+
+  const breatheSvgRoot = $("#breatheBearWrap svg");
+  const dots = [...breatheSvgRoot.querySelectorAll(".bc")];
+  const bearEl = breatheSvgRoot.querySelector(".bear-body");
+  const halo = $("#breathHalo");
+  const cue = $("#breathCue"), sub = $("#breathSub");
+
+  function setDot(i,on){
+    const d = dots[i]; if(!d) return;
+    d.classList.toggle("bc-glow", on);
+    d.style.color = d.getAttribute("fill");
+    d.setAttribute("r", on ? 12 : 8);
+    d.setAttribute("opacity", on ? 1 : .85);
+  }
+  function clearDots(){ dots.forEach((_,i)=>setDot(i,false)); }
+  function scaleBear(s, ms){
+    bearEl.style.transitionDuration = ms+"ms";
+    bearEl.style.transform = `scale(${s})`;
+    halo.style.setProperty("--halo", 1+(s-1)*8);
+    halo.style.transitionDuration = ms+"ms";
+  }
+  function wait(ms){ return new Promise(r=>breathTimers.push(setTimeout(r,ms))) }
+
+  async function breathe(){
+    if(breathing) return;
+    breathing = true;
+    $("#startBreath").hidden = true; $("#stopBreath").hidden = false;
+    $("#screen-breathe").classList.remove("breathing-idle");
+    try{
+      cue.textContent = "Fingers ready on the circles…"; sub.textContent = "We'll trace them together.";
+      await wait(2200);
+      for(let r=1;r<=rounds && breathing;r++){
+        sub.textContent = `Breath ${r} of ${rounds}`;
+        cue.textContent = "Sniff the lavender in… 🌸";
+        setDot(0,true); scaleBear(1.05, 1700); await wait(1800); if(!breathing) break;
+        cue.textContent = "One more little sniff!";
+        setDot(1,true); scaleBear(1.07, 700); await wait(900); if(!breathing) break;
+        cue.textContent = "Now blow out sloooowly…";
+        scaleBear(1, 4200);
+        for(let i=2;i<5 && breathing;i++){ setDot(i,true); await wait(1400); }
+        if(!breathing) break;
+        clearDots(); await wait(600);
+      }
+      if(breathing){
+        cue.textContent = "You did it. Feel how soft everything is now. 💜";
+        sub.textContent = "A paw print for your collection!";
+        paws++; store.set("paws", paws); $("#pawCount").textContent = paws;
+        petals();
+      }
+    } finally {
+      breathing = false;
+      $("#startBreath").hidden = false; $("#stopBreath").hidden = true;
+    }
+  }
+  function stopBreathing(){
+    breathing = false;
+    breathTimers.forEach(clearTimeout); breathTimers = [];
+    clearDots(); if(bearEl) scaleBear(1, 400);
+    cue.textContent = "Ready when you are.";
+    sub.textContent = "Two little sniffs in… one long, slow blow out.";
+    $("#startBreath").hidden = false; $("#stopBreath").hidden = true;
+  }
+  $("#startBreath").addEventListener("click", breathe);
+  $("#stopBreath").addEventListener("click", stopBreathing);
+
+  function petals(){
+    if(reduceMotion) return;
+    const colors = ["#a68fdb","#c9bee4","#eec173","#e2d9f5"];
+    for(let i=0;i<26;i++){
+      const p=document.createElement("span");
+      p.className="petal";
+      p.style.cssText=`left:${(i*137)%100}vw;background:${colors[i%4]};animation-duration:${2.6+(i%5)*.5}s;animation-delay:${(i%7)*.18}s`;
+      document.body.appendChild(p);
+      setTimeout(()=>p.remove(), 6500);
+    }
+  }
+
+  /* ---------- feelings ---------- */
+  const moodReplies = {
+    sunny:  {icon:"☀️", text:"Sunny inside! Let's soak it up together — happy wiggles!"},
+    breezy: {icon:"🍃", text:"A little breezy — that's okay. I'll hold your hand, or your paw."},
+    cloudy: {icon:"☁️", text:"Cloudy days happen to every bear. Clouds always drift on."},
+    rainy:  {icon:"🌧️", text:"A rainy one, hm? Come closer. We can be cosy while it rains."},
+    stormy: {icon:"⛈️", text:"Big storm feelings! They're allowed. Squeeze me tight — storms always pass."}
+  };
+  const moodIcons = {sunny:"☀️",breezy:"🍃",cloudy:"☁️",rainy:"🌧️",stormy:"⛈️"};
+  $$(".weather-btn").forEach(b=>b.addEventListener("click", ()=>{
+    $$(".weather-btn").forEach(x=>x.setAttribute("aria-pressed", x===b?"true":"false"));
+    const m = b.dataset.mood;
+    $("#feelSpeech").textContent = moodReplies[m].text;
+    $("#feelActions").hidden = false;
+    const log = store.get("moods", {});
+    log[new Date().toISOString().slice(0,10)] = m;
+    store.set("moods", log);
+    renderWeek();
+  }));
+  function renderWeek(){
+    const log = store.get("moods", {});
+    const days = ["S","M","T","W","T","F","S"];
+    const box = $("#weekDays"); box.innerHTML = "";
+    for(let i=6;i>=0;i--){
+      const d = new Date(); d.setDate(d.getDate()-i);
+      const key = d.toISOString().slice(0,10);
+      const m = log[key];
+      const el = document.createElement("div");
+      el.className = "week-day";
+      el.innerHTML = (m ? `<span style="font-size:22px">${moodIcons[m]}</span>` : `<span class="none"></span>`)
+        + `<span>${i===0 ? "today" : days[d.getDay()]}</span>`;
+      box.appendChild(el);
+    }
+  }
+  renderWeek();
+
+  /* ---------- affirmation cards ---------- */
+  const affirmations = [
+    "I am safe.",
+    "I try my best every day, and that is enough.",
+    "Big feelings pass, like weather.",
+    "My breath is always with me.",
+    "It's okay to need quiet.",
+    "I can do hard things — one sniff at a time.",
+    "I am loved exactly as I am.",
+    "My body knows how to feel calm.",
+    "New places can become friendly places.",
+    "I am brave even when I feel wobbly.",
+    "Rest is how I grow strong.",
+    "I belong, just as I am."
+  ];
+  let affIx = store.get("affIx", 0);
+  const card = $("#affCard");
+  function showAff(){ $("#affText").textContent = affirmations[affIx % affirmations.length]; }
+  showAff();
+  function flip(){ card.classList.toggle("flipped"); }
+  card.addEventListener("click", flip);
+  card.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();flip();} });
+  $("#newCard").addEventListener("click", ()=>{
+    card.classList.remove("flipped");
+    setTimeout(()=>{ affIx++; store.set("affIx", affIx); showAff(); }, 380);
+  });
+
+  /* ---------- sleep ---------- */
+  $("#tuckBtn").addEventListener("click", ()=>{
+    const scene = $("#sleepScene");
+    scene.classList.toggle("asleep");
+    $("#tuckBtn").textContent = scene.classList.contains("asleep") ? "🌤️ Wake up gently" : "🌙 Tuck in";
+  });
+
+  /* gentle rain — generated locally with WebAudio, off by default */
+  let audioCtx = null, rainNodes = null;
+  function startRain(){
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for(let i=0;i<bufferSize;i++){
+      const white = Math.random()*2-1;
+      last = (last + .02*white)/1.02;          // pink-ish noise
+      data[i] = last*3.5;
+    }
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer; src.loop = true;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass"; filter.frequency.value = 900;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0;
+    src.connect(filter).connect(gain).connect(audioCtx.destination);
+    src.start();
+    gain.gain.linearRampToValueAtTime(.25, audioCtx.currentTime + 2);
+    rainNodes = {src, gain};
+  }
+  function stopRain(){
+    if(!rainNodes) return;
+    const {src, gain} = rainNodes;
+    gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
+    setTimeout(()=>src.stop(), 1200);
+    rainNodes = null;
+  }
+  $("#soundBtn").addEventListener("click", ()=>{
+    const on = $("#soundBtn").getAttribute("aria-pressed")==="true";
+    if(on){ stopRain(); } else { startRain(); }
+    $("#soundBtn").setAttribute("aria-pressed", on?"false":"true");
+    $("#soundBtn").textContent = on ? "🔈 Gentle rain: off" : "🔊 Gentle rain: on";
+  });
+
+  /* ---------- parent corner ---------- */
+  const parentDialog = $("#parentDialog");
+  $("#parentBtn").addEventListener("click", ()=>parentDialog.showModal());
+  parentDialog.querySelector(".close-x").addEventListener("click", ()=>parentDialog.close());
+
+  /* idle breathing on den + breathe screens */
+  $("#screen-breathe").classList.add("breathing-idle");
+})();
+</script>
+
+</body>
+</html>
